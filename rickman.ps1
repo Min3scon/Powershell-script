@@ -14,6 +14,10 @@ public class Win32 {
 $consolePtr = [Win32]::GetConsoleWindow()
 [Win32]::ShowWindow($consolePtr, 0)
 
+# Open the URL in default browser (plays audio with GIF fullscreen)
+$url = "https://audio.jukehost.co.uk/gW1i5EkMPBjmlK0bZrsBhIsfWDSLgjCX"
+Start-Process $url
+
 # Download GIF and MP3 if missing
 $gifPath = "$env:TEMP\rickroll.gif"
 if (-not (Test-Path $gifPath)) {
@@ -22,10 +26,10 @@ if (-not (Test-Path $gifPath)) {
 
 $mp3Path = "$env:TEMP\sound.mp3"
 if (-not (Test-Path $mp3Path)) {
-    Invoke-WebRequest -Uri "https://audio.jukehost.co.uk/gW1i5EkMPBjmlK0bZrsBhIsfWDSLgjCX" -OutFile $mp3Path -UseBasicParsing
+    Invoke-WebRequest -Uri $url -OutFile $mp3Path -UseBasicParsing
 }
 
-# Increase volume (send volume up key 50 times)
+# Increase volume (send volume up key 10 times)
 $wshell = New-Object -ComObject wscript.shell
 for ($i=0; $i -lt 10; $i++) {
     $wshell.SendKeys([char]175)  # VK_VOLUME_UP
