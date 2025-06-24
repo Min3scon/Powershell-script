@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 
-# Hide PowerShell console window immediately
+# Hide PowerShell console window
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -12,49 +12,57 @@ public class Win32 {
 }
 "@
 $consolePtr = [Win32]::GetConsoleWindow()
-[Win32]::ShowWindow($consolePtr, 0)  # Hide the console window
+[Win32]::ShowWindow($consolePtr, 0)
 
-# Paths for temporary files
+# Download GIF and MP3 if missing
 $gifPath = "$env:TEMP\rickroll.gif"
-$mp3Path = "$env:TEMP\sound.mp3"
-
-# Download GIF and MP3 if missing (optional)
 if (-not (Test-Path $gifPath)) {
     Invoke-WebRequest -Uri "https://media.tenor.com/onTlUVMtWy4AAAAM/rickroll-rick.gif" -OutFile $gifPath -UseBasicParsing
 }
 
+$mp3Path = "$env:TEMP\sound.mp3"
 if (-not (Test-Path $mp3Path)) {
     Invoke-WebRequest -Uri "https://audio.jukehost.co.uk/gW1i5EkMPBjmlK0bZrsBhIsfWDSLgjCX" -OutFile $mp3Path -UseBasicParsing
 }
 
-# Increase volume (optional)
+# Increase volume (send volume up key 50 times)
 $wshell = New-Object -ComObject wscript.shell
-for ($i=0; $i -lt 50; $i++) {
+for ($i=0; $i -lt 10; $i++) {
     $wshell.SendKeys([char]175)  # VK_VOLUME_UP
     Start-Sleep -Milliseconds 20
 }
 
-# Create a non-closable, invisible form to prevent user interaction
+# Create Windows Form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Hidden Window"
-$form.Size = [System.Drawing.Size]::new(1, 1)
-$form.StartPosition = "Manual"
-$form.Location = [System.Drawing.Point]::new(-3000, -3000)  # Place off-screen
-
-# Prevent closing via Alt-F4 or close button
-$form.Add_FormClosing({
-    param($sender, $e)
-    $e.Cancel = $true  # Block all closure attempts
-})
-
-# Ensure the form is not visible in Task Manager or Alt-Tab list
-$form.ShowInTaskbar = $false
+$form.WindowState = 'Maximized'
+$form.FormBorderStyle = 'None'
 $form.TopMost = $true
+$form.BackColor = [System.Drawing.Color]::Black
+$form.ShowInTaskbar = $false
+$form.StartPosition = 'Manual'
+$form.Location = [System.Drawing.Point]::new(0,0)
+$form.Size = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Size
 
-# Show the form (invisible to user but prevents script from exiting)
+# Create PictureBox with GIF
+$pictureBox = New-Object System.Windows.Forms.PictureBox
+$pictureBox.Dock = 'Fill'
+$pictureBox.SizeMode = 'Zoom'
+$pictureBox.ImageLocation = $gifPath
+$pictureBox.Load()
+
+$form.Controls.Add($pictureBox)
+
+# Setup Windows Media Player COM for audio looping
+$wmp = New-Object -ComObject WMPlayer.OCX
+$media = $wmp.newMedia($mp3Path)
+$wmp.currentPlaylist.clear()
+$wmp.currentPlaylist.appendItem($media)
+$wmp.settings.setMode("loop", $true)
+$wmp.controls.play()
+
+# Show the form
+$form.Add_Shown({ $form.Activate() })
 $form.Show()
 
-# Prevent script from closing by keeping it running indefinitely
-while ($true) {
-    Start-Sleep -Seconds 1
-}
+# Run the form (blocks here)
+[void][System.Windows.Forms.Application]::Run($form)
